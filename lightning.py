@@ -43,6 +43,7 @@ if len(sys.argv) >= 4:
 	name, fmt = fi.rsplit(".", 1) if "." in fi else (fi, "mp4")
 	if len(sys.argv) >= 5:
 		fn = sys.argv[4]
+		name, fmt = fn.rsplit(".", 1) if "." in fn else (fn, "mp4")
 	else:
 		fn = name + "~t" + "." + fmt
 	start, end = time_parse(start), time_parse(end)
@@ -79,6 +80,7 @@ else:
 		if '"' in fn or "'" in fn:
 			import ast
 			fn = ast.literal_eval(fn)
+		name, fmt = fn.rsplit(".", 1) if "." in fn else (fn, "mp4")
 	except:
 		easygui.exceptionbox()
 		raise SystemExit
