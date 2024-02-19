@@ -72,7 +72,7 @@ else:
 	if not text:
 		raise SystemExit
 	try:
-		lines = text.splitlines()
+		lines = [line for line in text.splitlines() if line.strip()]
 		start = time_parse(lines[0].split(":", 1)[-1])
 		end = time_parse(lines[1].split(":", 1)[-1])
 		fn = lines[2].split(":", 1)[-1].strip()
@@ -81,6 +81,7 @@ else:
 			fn = ast.literal_eval(fn)
 	except:
 		easygui.exceptionbox()
+		raise SystemExit
 
 try:
 	proc = subprocess.Popen(["ffprobe", "-read_intervals", str(max(0, start - 30)) + "%+60", "-skip_frame", "nokey", "-select_streams", "v:0", "-show_entries", "frame=pts_time", "-of", "default=nokey=1:noprint_wrappers=1", "-i", fi], stdout=subprocess.PIPE)
@@ -94,22 +95,23 @@ try:
 		os.remove(fn)
 
 	if abs(start - key) < 1 / 30:
-		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start // 1), "-to", str(end), "-i", fi, "-ss", str(start % 1), "-c", "copy", fn])
+		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start), "-to", str(end), "-i", fi, "-reset_timestamps", "1", "-c", "copy", fn])
 	else:
 		fa = name + "~0" + "." + "ts"
-		aproc = subprocess.Popen(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start // 1), "-to", str(end), "-i", fi, "-ss", str(start % 1), "-vn", "-c:a", "copy", fa])
+		aproc = subprocess.Popen(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start // 1), "-to", str(end), "-vn", "-i", fi, "-ss", str(start % 1), "-c:a", "copy", fa])
 
 		f1 = name + "~1" + "." + "ts"
 		f2 = name + "~2" + "." + "ts"
 		cdc = subprocess.check_output(["ffprobe", "-skip_frame", "nokey", "-select_streams", "v:0", "-show_entries", "stream=codec_name", "-of", "default=nokey=1:noprint_wrappers=1", "-i", fi]).strip()
 
-		vproc = subprocess.Popen(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start), "-to", str(key), "-i", fi, "-crf", "20", "-c:v", cdc, "-an", f1])
+		vproc = subprocess.Popen(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(start), "-to", str(key), "-an", "-i", fi, "-crf", "20", "-c:v", cdc, f1])
 		fps = subprocess.check_output(["ffprobe", "-skip_frame", "nokey", "-select_streams", "v:0", "-show_entries", "stream=avg_frame_rate", "-of", "default=nokey=1:noprint_wrappers=1", "-i", fi]).strip().decode("ascii")
 		if not fps or fps == "N/A":
 			fps = 1000
 		else:
 			fps = eval(fps, {}, {})
-		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(key + 1 / fps), "-to", str(end), "-i", fi, "-c:v", "copy", "-an", "-avoid_negative_ts", "1", f2])
+		print("TRIM:", start, key, end, fps)
+		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-ss", str(key + 1 / fps), "-to", str(end), "-an", "-i", fi, "-c:v", "copy", "-avoid_negative_ts", "1", f2])
 		aproc.wait()
 		vproc.wait()
 
@@ -117,7 +119,7 @@ try:
 		with open(fc, "w", encoding="utf-8") as f:
 			f.write("file " + repr(f1) + "\n")
 			f.write("file " + repr(f2) + "\n")
-		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-safe", "0", "-f", "concat", "-i", fc, "-i", fa, "-c:v", "copy", "-c:a", "copy", fn])
+		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-safe", "0", "-f", "concat", "-i", fc, *(("-i", fa) if os.path.exists(fa) and os.path.getsize(fa) else ()), "-c:v", "copy", "-c:a", "copy", fn])
 		for fd in (fa, f1, f2, fc):
 			try:
 				os.remove(fd)
