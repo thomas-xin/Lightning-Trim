@@ -122,12 +122,13 @@ try:
 			f.write("file " + repr(f1) + "\n")
 			f.write("file " + repr(f2) + "\n")
 		subprocess.run(["ffmpeg", "-y", "-hwaccel", "auto", "-safe", "0", "-f", "concat", "-i", fc, *(("-i", fa) if os.path.exists(fa) and os.path.getsize(fa) else ()), "-c:v", "copy", "-c:a", "copy", fn])
-		for fd in (fa, f1, f2, fc):
-			try:
-				os.remove(fd)
-			except:
-				pass
-	if not os.path.exists(fn):
+		if os.path.exists(fn) and os.path.getsize(fn):
+			for fd in (fa, f1, f2, fc):
+				try:
+					os.remove(fd)
+				except:
+					pass
+	if not os.path.exists(fn) or not os.path.getsize(fn):
 		raise RuntimeError("Unable to save file. Please check log for info.")
 except:
 	if not easygui:
